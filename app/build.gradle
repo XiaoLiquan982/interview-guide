@@ -1,0 +1,100 @@
+plugins {
+    id 'java'
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+}
+
+group = 'com.interview'
+version = '0.0.1-SNAPSHOT'
+
+repositories {
+    maven { url 'https://maven.aliyun.com/repository/public/' }
+    maven { url 'https://maven.aliyun.com/repository/spring/' }
+    maven { url 'https://maven.aliyun.com/repository/gradle-plugin/' }
+    mavenCentral()
+    maven { url 'https://repo.spring.io/milestone' }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    runtimeOnly 'org.postgresql:postgresql'
+    testRuntimeOnly 'com.h2database:h2'
+
+    implementation platform(libs.spring.ai.agent.utils.bom)
+    implementation "org.springframework.ai:spring-ai-starter-model-openai:${libs.versions.springAi.get()}"
+    implementation "org.springframework.ai:spring-ai-starter-vector-store-pgvector:${libs.versions.springAi.get()}"
+    implementation libs.spring.ai.agent.utils
+
+    implementation libs.tika.core
+    implementation libs.tika.parsers
+    implementation "software.amazon.awssdk:s3:${libs.versions.aws.sdk.get()}"
+    implementation libs.pinyin4j
+    implementation libs.springdoc
+    implementation "org.redisson:redisson-spring-boot-starter:${libs.versions.redisson.get()}"
+    implementation "com.itextpdf:itext-core:${libs.versions.itext.get()}"
+    implementation "com.itextpdf:font-asian:${libs.versions.itext.get()}"
+
+    implementation('com.alibaba:dashscope-sdk-java:2.22.7') {
+        exclude group: 'org.slf4j', module: 'slf4j-simple'
+    }
+
+    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
+
+    implementation "org.mapstruct:mapstruct:${libs.versions.mapstruct.get()}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${libs.versions.mapstruct.get()}"
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation libs.junit.jupiter
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('bootRun') {
+    jvmArgs = [
+            '-Dfile.encoding=UTF-8',
+            '-Dconsole.encoding=UTF-8',
+            '-Dstdout.encoding=UTF-8',
+            '-Dstderr.encoding=UTF-8'
+    ]
+
+    def envFile = rootProject.file('.env')
+    if (envFile.exists()) {
+        envFile.eachLine { line ->
+            def trimmed = line.trim()
+            if (trimmed.isEmpty() || trimmed.startsWith('#')) {
+                return
+            }
+            def eq = trimmed.indexOf('=')
+            if (eq <= 0) {
+                return
+            }
+            def key = trimmed.substring(0, eq).trim()
+            def val = trimmed.substring(eq + 1).trim()
+            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                val = val.substring(1, val.length() - 1)
+            }
+            environment key, val
+        }
+    }
+}
